@@ -1,0 +1,172 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Color Studio</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo"><span class="logo-mark"></span> Brand Color Studio</div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-view="extractor">Color Extractor</button>
+    <button class="tab-btn" data-view="resizer">Image Resizer</button>
+  </nav>
+</header>
+
+<!-- ============ COLOR EXTRACTOR VIEW ============ -->
+<main id="view-extractor" class="view active">
+  <div class="extractor-grid">
+
+    <!-- LEFT COLUMN: images + palette -->
+    <section class="panel">
+      <h2 class="panel-title">Images</h2>
+
+      <div id="dropZone" class="drop-zone">
+        <div class="drop-icon">&#8682;</div>
+        <p><strong>Drop images here</strong> or click to browse</p>
+        <p class="hint">Upload multiple pictures &mdash; colors are pulled from all of them</p>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      </div>
+
+      <div id="thumbStrip" class="thumb-strip"></div>
+
+      <div id="previewWrap" class="preview-wrap" hidden>
+        <canvas id="previewCanvas"></canvas>
+        <div id="loupe" class="loupe" hidden>
+          <canvas id="loupeCanvas" width="150" height="150"></canvas>
+        </div>
+        <p class="hint center">Hover to magnify &middot; click to pick a pixel for the selected category</p>
+      </div>
+
+      <div class="palette-header">
+        <h2 class="panel-title">Color Palette</h2>
+        <div class="palette-controls">
+          <button id="paletteMinus" class="round-btn" title="Fewer colors">&minus;</button>
+          <button id="palettePlus" class="round-btn" title="More colors">+</button>
+          <button id="paletteCopy" class="round-btn" title="Copy palette hexes">&#10697;</button>
+        </div>
+      </div>
+      <div id="paletteStrip" class="palette-strip"></div>
+      <p class="hint">Click a category on the right, then click any swatch to assign it.</p>
+    </section>
+
+    <!-- RIGHT COLUMN: picked color, categories, options -->
+    <section class="panel">
+      <h2 class="panel-title">Picked Color</h2>
+      <div class="picked-row">
+        <div id="pickedSwatch" class="picked-swatch"></div>
+        <div class="picked-codes">
+          <div class="code-row"><span class="code-label">HEX</span><span id="pickedHex" class="code-value">#2596be</span><button class="copy-mini" data-copy-target="pickedHex" title="Copy">&#10697;</button></div>
+          <div class="code-row"><span class="code-label">RGB</span><span id="pickedRgb" class="code-value">rgb(37, 150, 190)</span><button class="copy-mini" data-copy-target="pickedRgb" title="Copy">&#10697;</button></div>
+          <div class="code-row"><span class="code-label">HSL</span><span id="pickedHsl" class="code-value">hsl(196, 67%, 45%)</span><button class="copy-mini" data-copy-target="pickedHsl" title="Copy">&#10697;</button></div>
+        </div>
+      </div>
+
+      <div class="cat-header">
+        <h2 class="panel-title">Brand Categories</h2>
+        <button id="copyAllBtn" class="primary-btn">Copy All Hex Values</button>
+      </div>
+      <div id="categoryList" class="category-list"></div>
+
+      <h2 class="panel-title">Palette Options</h2>
+      <p class="hint">Two ways to assign the image colors. Click Apply to load one into the categories above.</p>
+      <div id="optionsWrap" class="options-wrap"></div>
+
+      <h2 class="panel-title">Color Harmonies</h2>
+      <p class="hint">Built from your Primary Color. Click any swatch to assign it to the selected category.</p>
+      <div id="harmoniesWrap" class="harmonies-wrap"></div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ============ IMAGE RESIZER VIEW ============ -->
+<main id="view-resizer" class="view">
+  <div class="resizer-grid">
+
+    <!-- SIDEBAR -->
+    <aside class="panel resizer-sidebar">
+      <div class="resizer-toolbar">
+        <button id="rzAddBtn" class="square-btn big" title="Add images">+</button>
+        <button id="rzClearBtn" class="square-btn" title="Remove all">&#128465;</button>
+        <input type="file" id="rzFileInput" accept="image/*" multiple hidden>
+      </div>
+      <p class="hint">Max file size: 10 MB</p>
+      <hr class="divider">
+
+      <h2 class="panel-title">Resize Settings</h2>
+      <div class="seg-tabs">
+        <button class="seg-btn active" data-mode="size">By Size</button>
+        <button class="seg-btn" data-mode="percent">As Percentage</button>
+      </div>
+
+      <div id="rzModeSize" class="mode-pane">
+        <div class="dim-row">
+          <div class="dim-field">
+            <label for="rzWidth">Width</label>
+            <input type="number" id="rzWidth" placeholder="Enter Width" min="1">
+          </div>
+          <div class="dim-field">
+            <label for="rzHeight">Height <span class="unit">px</span></label>
+            <input type="number" id="rzHeight" placeholder="Enter Height" min="1">
+          </div>
+        </div>
+        <label class="check-row"><input type="checkbox" id="rzLockRatio" checked> Lock Aspect Ratio</label>
+      </div>
+
+      <div id="rzModePercent" class="mode-pane" hidden>
+        <div class="dim-field">
+          <label for="rzPercent">Scale <span class="unit">%</span></label>
+          <input type="number" id="rzPercent" value="100" min="1" max="500">
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h2 class="panel-title">Export Settings</h2>
+
+      <div class="dim-field">
+        <label for="rzTargetKB">Target File Size <span class="optional">(optional)</span></label>
+        <div class="kb-row">
+          <input type="number" id="rzTargetKB" min="5" placeholder="">
+          <span class="kb-unit">KB</span>
+        </div>
+        <p class="hint">Set a max output file size. Only works for JPG files.</p>
+      </div>
+
+      <div class="dim-field">
+        <label for="rzFormat">Save Image As</label>
+        <select id="rzFormat">
+          <option value="original">Original</option>
+          <option value="jpeg">JPG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WebP</option>
+        </select>
+      </div>
+
+      <button id="rzExportBtn" class="primary-btn full">Export &rarr;</button>
+    </aside>
+
+    <!-- FILE AREA -->
+    <section class="panel resizer-files">
+      <div id="rzEmpty" class="rz-empty">
+        <div class="drop-icon">&#8682;</div>
+        <p><strong>Add images to resize</strong></p>
+        <p class="hint">Click the + button or drop files anywhere on this panel</p>
+      </div>
+      <div id="rzFileGrid" class="rz-file-grid"></div>
+    </section>
+
+  </div>
+</main>
+
+<div id="toastWrap" class="toast-wrap"></div>
+
+<script src="color-extractor.js"></script>
+<script src="resizer.js"></script>
+</body>
+</html>

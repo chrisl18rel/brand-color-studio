@@ -1,0 +1,17 @@
+#!/bin/bash
+# brand-color-studio-watcher
+# Auto-commit and push on any file change.
+
+REPO="/Users/chrisleatherwood/Desktop/brand-color-studio"
+BRANCH="main"
+
+cd "$REPO" || exit 1
+
+fswatch -o -l 1 --exclude '\.git' "$REPO" | while read -r _; do
+  cd "$REPO" || continue
+  if [[ -n $(git status --porcelain) ]]; then
+    git add -A
+    git commit -m "auto: $(date '+%Y-%m-%d %H:%M:%S')" >/dev/null 2>&1
+    git push origin "$BRANCH" >/dev/null 2>&1
+  fi
+done
