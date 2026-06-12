@@ -12,6 +12,10 @@ fswatch -o -l 1 --exclude '\.git' "$REPO" | while read -r _; do
   if [[ -n $(git status --porcelain) ]]; then
     git add -A
     git commit -m "auto: $(date '+%Y-%m-%d %H:%M:%S')" >/dev/null 2>&1
-    git push origin "$BRANCH" >/dev/null 2>&1
+    if ! git push origin "$BRANCH" >/dev/null 2>&1; then
+      LOG="$HOME/Library/Logs/brand-color-studio-watcher.log"
+      echo "--- $(date '+%Y-%m-%d %H:%M:%S') push failed, retrying with output:" >> "$LOG"
+      git push origin "$BRANCH" >> "$LOG" 2>&1
+    fi
   fi
 done
