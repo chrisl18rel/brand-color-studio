@@ -142,7 +142,8 @@ body {
 }
 .cat-row:hover { background: #f8fafd; }
 .cat-row.active { border-color: var(--accent); background: #f3f7ff; box-shadow: 0 0 0 1px var(--accent); }
-.cat-swatch { width: 38px; height: 38px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; }
+.cat-swatch { width: 38px; height: 38px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); flex-shrink: 0; cursor: pointer; }
+.cat-swatch:hover { box-shadow: 0 0 0 2px var(--accent); }
 .cat-name { flex: 1; font-size: 13.5px; font-weight: 600; }
 .cat-hex {
   font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px;
