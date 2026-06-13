@@ -440,7 +440,7 @@
   document.getElementById('copyAllBtn').addEventListener('click', () => {
     if (!Object.keys(assignments).length) { window.showToast('Upload images first', 'error'); return; }
     const text = CATEGORIES.map(c => assignments[c.key] || '').join('\n');
-    copyText(text, 'All 7 hex values copied — paste into your spreadsheet column');
+    copyText(text, 'All ' + CATEGORIES.length + ' hex values copied — paste into your spreadsheet column');
   });
 
   function renderOptions() {
