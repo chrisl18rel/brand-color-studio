@@ -250,11 +250,16 @@
       (c.hsl.h <= 18 || c.hsl.h >= 345));
     const danger = red ? red.hex : hslToHex(4, 0.72, 0.5);
 
+    // action button: strong saturated CTA color — accent hue if present, else primary
+    const actionBtn = acc
+      ? hslToHex(acc.hsl.h, Math.max(acc.hsl.s, 0.5), 0.48)
+      : hslToHex(ph, Math.max(ps, 0.5), 0.48);
+
     return {
       name: variant === 0 ? 'Option A — Dominant' : 'Option B — Alternate Hue',
       colors: {
         primary: primary.hex, primaryDark, pageBg, secondaryBg,
-        accentText, bodyText, danger
+        accentText, bodyText, danger, actionBtn
       }
     };
   }
