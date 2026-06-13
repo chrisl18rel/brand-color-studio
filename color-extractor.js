@@ -402,6 +402,7 @@
       });
       const sw = document.createElement('div');
       sw.className = 'cat-swatch'; sw.style.background = hex;
+      sw.title = 'Click to edit this color';
       const name = document.createElement('div');
       name.className = 'cat-name'; name.textContent = cat.label;
       const input = document.createElement('input');
