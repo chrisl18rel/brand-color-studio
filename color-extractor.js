@@ -142,7 +142,8 @@
     { key: 'secondaryBg', label: 'Secondary Background' },
     { key: 'accentText', label: 'Accent Text' },
     { key: 'bodyText', label: 'Header & Body Text' },
-    { key: 'danger', label: 'Danger / Alert' }
+    { key: 'danger', label: 'Danger / Alert' },
+    { key: 'actionBtn', label: 'Action Button' }
   ];
   let images = [];          // { name, img, pixels }
   let combined = [];        // quantized pool {r,g,b,count}
