@@ -419,6 +419,16 @@
           input.value = hex;
         }
       });
+      // clicking the swatch opens the color picker to fine-tune the assigned color
+      sw.addEventListener('click', e => {
+        e.stopPropagation();
+        window.openColorPicker(sw, assignments[cat.key] || hex, newHex => {
+          assignments[cat.key] = newHex;
+          input.value = newHex;
+          setPicked(newHex);
+          if (cat.key === 'primary') renderHarmonies();
+        });
+      });
       const copy = document.createElement('button');
       copy.className = 'copy-mini'; copy.innerHTML = '&#10697;'; copy.title = 'Copy ' + hex;
       copy.addEventListener('click', e => { e.stopPropagation(); copyText(assignments[cat.key] || hex, hex + ' copied'); });
