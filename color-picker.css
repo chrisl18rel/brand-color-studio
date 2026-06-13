@@ -1,0 +1,60 @@
+/* color-picker.css */
+/* HSB color picker popover — light-themed to match Brand Color Studio */
+
+.color-popover {
+  position: fixed; z-index: 2000;
+  background: #ffffff; border: 1px solid #e4e8ee; border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(16, 24, 40, 0.18);
+  width: 300px; padding: 0; overflow: hidden; user-select: none;
+}
+
+/* Saturation/brightness gradient canvas */
+.cp-sb-canvas { display: block; width: 100%; height: 160px; cursor: crosshair; }
+
+/* Hue bar strip row */
+.cp-strips { display: flex; gap: 8px; padding: 10px 12px 4px; }
+.cp-strip-col { flex: 1; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+.cp-hue-bar {
+  width: 100%; height: 14px; border-radius: 7px; cursor: pointer; position: relative;
+  background: linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
+}
+.cp-strip-thumb {
+  position: absolute; top: 50%; transform: translate(-50%,-50%);
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  pointer-events: none;
+}
+
+/* Color preview swatch */
+.cp-preview-col { width: 34px; display: flex; flex-direction: column; gap: 5px; padding-top: 2px; }
+.cp-preview-swatch {
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1px solid rgba(16,24,40,0.12); flex-shrink: 0;
+}
+
+/* Numeric inputs */
+.cp-inputs { display: flex; gap: 5px; padding: 4px 12px 10px; }
+.cp-input-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cp-input-group input[type="number"] {
+  width: 100%; background: #f6f8fb; border: 1px solid #e4e8ee; border-radius: 6px;
+  color: #1d2433; font-size: 11px; text-align: center; padding: 4px 2px; outline: none;
+}
+.cp-input-group input[type="number"]:focus { border-color: #2563eb; }
+.cp-input-group input[type="number"]::-webkit-inner-spin-button { display: none; }
+.cp-input-label { font-size: 9px; color: #7a8499; text-transform: uppercase; letter-spacing: 0.5px; }
+.cp-hex-group { flex: 1.4; }
+.cp-hex-group input[type="text"] {
+  width: 100%; background: #f6f8fb; border: 1px solid #e4e8ee; border-radius: 6px;
+  color: #1d2433; font-size: 11px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  text-align: center; padding: 4px 2px; outline: none;
+}
+.cp-hex-group input[type="text"]:focus { border-color: #2563eb; }
+
+/* HSB / RGB mode toggle */
+.cp-mode-row { display: flex; justify-content: center; gap: 4px; padding: 0 12px 6px; }
+.cp-mode-btn {
+  flex: 1; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  background: none; border: 1px solid #e4e8ee; color: #7a8499;
+  border-radius: 5px; padding: 3px 2px; cursor: pointer; transition: all 0.1s;
+}
+.cp-mode-btn.active { background: #eef2ff; color: #2563eb; border-color: #dbe4ff; }
