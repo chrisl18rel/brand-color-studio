@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="color-picker.css">
 <link rel="stylesheet" href="gif-converter.css">
+<link rel="stylesheet" href="chroma-key.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
@@ -18,6 +19,7 @@
     <button class="tab-btn active" data-view="extractor">Color Extractor</button>
     <button class="tab-btn" data-view="resizer">Image Resizer</button>
     <button class="tab-btn" data-view="gif">MP4 to GIF</button>
+    <button class="tab-btn" data-view="ck">Background Remover</button>
   </nav>
 </header>
 
@@ -274,11 +276,150 @@
   </div>
 </main>
 
+<!-- ============ BACKGROUND REMOVER VIEW (logic: chroma-key.js + chroma-key-export.js, styles: chroma-key.css) ============ -->
+<main id="view-ck" class="view">
+  <div class="ck-grid">
+
+    <!-- SIDEBAR -->
+    <aside class="panel">
+      <div class="resizer-toolbar">
+        <button id="ckAddBtn" class="square-btn big" title="Select video">+</button>
+        <button id="ckClearBtn" class="square-btn" title="Remove video">&#128465;</button>
+        <input type="file" id="ckFileInput" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
+      </div>
+      <p class="hint">MP4, WebM or MOV &middot; max 200 MB &middot; works best on a solid-color background</p>
+
+      <div id="ckFileCard" class="gif-file-card" hidden>
+        <div class="gif-file-icon">&#9654;</div>
+        <div class="gif-file-meta">
+          <div id="ckFileName" class="gif-file-name"></div>
+          <div id="ckFileSub" class="gif-file-sub"></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h2 class="panel-title">Background Color</h2>
+      <div class="ck-color-row">
+        <div id="ckKeySwatch" class="ck-color-swatch"></div>
+        <input type="text" id="ckKeyHex" class="ck-color-hex" value="#00ff00" maxlength="7" spellcheck="false">
+      </div>
+      <div class="ck-color-btns">
+        <button id="ckAutoBtn" class="ghost-btn">Auto-Detect</button>
+        <button id="ckPickBtn" class="ghost-btn">Pick from Video</button>
+      </div>
+
+      <div class="range-field">
+        <div class="range-head"><label for="ckTolerance">Tolerance</label><span id="ckToleranceVal" class="range-value">25%</span></div>
+        <input type="range" id="ckTolerance" min="0" max="100" step="1" value="25">
+      </div>
+      <div class="range-field">
+        <div class="range-head"><label for="ckSoftness">Edge Softness</label><span id="ckSoftnessVal" class="range-value">10%</span></div>
+        <input type="range" id="ckSoftness" min="0" max="50" step="1" value="10">
+      </div>
+      <label class="check-row"><input type="checkbox" id="ckSpill" checked> Remove color spill on edges</label>
+      <p class="hint">Raise tolerance if background remains. Lower it if parts of the subject disappear.</p>
+
+      <hr class="divider">
+      <h2 class="panel-title">Export Settings</h2>
+
+      <div class="dim-field">
+        <label for="ckFormat">Save As</label>
+        <select id="ckFormat">
+          <option value="gif">Transparent GIF</option>
+          <option value="png">PNG Frames (ZIP, transparent)</option>
+          <option value="video">Video with new background (MP4/WebM)</option>
+        </select>
+      </div>
+
+      <div id="ckBgRow" class="dim-field" hidden>
+        <label for="ckBgColor">New Background Color</label>
+        <div class="ck-bg-row">
+          <input type="color" id="ckBgColor" value="#ffffff">
+          <span class="hint ck-bg-hint">Video files can't be transparent, so choose a replacement color.</span>
+        </div>
+      </div>
+
+      <div class="dim-field">
+        <label for="ckWidth">Width <span class="unit">px &middot; height scales automatically</span></label>
+        <input type="number" id="ckWidth" placeholder="Original" min="16">
+      </div>
+
+      <div class="range-field">
+        <div class="range-head"><label for="ckFps">Frame Rate</label><span id="ckFpsVal" class="range-value">12 fps</span></div>
+        <input type="range" id="ckFps" min="5" max="30" step="1" value="12">
+      </div>
+
+      <div id="ckEstimate" class="gif-estimate"></div>
+
+      <button id="ckExportBtn" class="primary-btn full" disabled>Export &rarr;</button>
+      <div id="ckProgress" class="gif-progress" hidden>
+        <div class="gif-progress-track"><div id="ckProgressFill" class="gif-progress-fill"></div></div>
+        <div id="ckProgressLabel" class="gif-progress-label"></div>
+      </div>
+    </aside>
+
+    <!-- STAGE -->
+    <section id="ckStage" class="panel ck-stage">
+      <div id="ckEmpty" class="drop-zone rz-empty">
+        <div class="drop-icon">&#8682;</div>
+        <p><strong>Drop a video here</strong> or click to browse</p>
+        <p class="hint">Your video never leaves your computer</p>
+      </div>
+
+      <div id="ckEditor" hidden>
+        <video id="ckVideo" muted playsinline hidden></video>
+        <div class="ck-preview-wrap">
+          <canvas id="ckPreview" class="ck-preview"></canvas>
+          <div id="ckPickBanner" class="ck-pick-banner" hidden>Click the background color in the video</div>
+        </div>
+        <div class="ck-transport">
+          <button id="ckPlayBtn" class="square-btn" title="Play / pause">&#9654;</button>
+          <input type="range" id="ckScrub" min="0" step="0.05" value="0">
+          <span id="ckTime" class="ck-time">0:00.0 / 0:00.0</span>
+        </div>
+        <div class="ck-preview-toggle">
+          <button class="ghost-btn active" data-ck-preview="keyed">Background Removed</button>
+          <button class="ghost-btn" data-ck-preview="original">Original</button>
+        </div>
+
+        <div class="trim-row">
+          <h2 class="panel-title">Trim Clip</h2>
+        </div>
+        <div class="range-field">
+          <div class="range-head"><label for="ckStart">Start</label><span id="ckStartVal" class="range-value"></span></div>
+          <input type="range" id="ckStart" min="0" step="0.05" value="0">
+        </div>
+        <div class="range-field">
+          <div class="range-head"><label for="ckEnd">End</label><span id="ckEndVal" class="range-value"></span></div>
+          <input type="range" id="ckEnd" min="0" step="0.05" value="0">
+        </div>
+        <div class="trim-buttons">
+          <button id="ckSetStart" class="ghost-btn">Set Start to Current Frame</button>
+          <button id="ckSetEnd" class="ghost-btn">Set End to Current Frame</button>
+        </div>
+      </div>
+
+      <div id="ckResult" class="ck-result" hidden>
+        <h2 class="panel-title">Your Export</h2>
+        <img id="ckResultImg" class="ck-result-media" alt="Background removed preview" hidden>
+        <video id="ckResultVid" class="ck-result-media" controls muted playsinline loop hidden></video>
+        <div id="ckResultMeta" class="ck-result-meta"></div>
+        <div class="ck-result-actions">
+          <button id="ckDownloadBtn" class="primary-btn">Download</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
 <div id="toastWrap" class="toast-wrap"></div>
 
 <script src="color-picker.js"></script>
 <script src="color-extractor.js"></script>
 <script src="resizer.js"></script>
 <script src="gif-converter.js"></script>
+<script src="chroma-key.js"></script>
+<script src="chroma-key-export.js"></script>
 </body>
 </html>

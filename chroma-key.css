@@ -1,0 +1,68 @@
+/* chroma-key.css */
+/* Styles for the Background Remover view. Reuses tokens and base classes from styles.css,
+   and .range-field / .gif-progress styles from gif-converter.css. */
+
+.ck-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 860px) { .ck-grid { grid-template-columns: 1fr; } }
+
+.ck-stage { min-height: 420px; }
+
+/* ---------- key color row ---------- */
+.ck-color-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; }
+.ck-color-swatch {
+  width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--border);
+  flex-shrink: 0; background: #00ff00;
+}
+.ck-color-hex {
+  flex: 1; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text);
+  text-transform: lowercase; min-width: 0;
+}
+.ck-color-hex:focus { outline: none; border-color: var(--accent); }
+.ck-color-btns { display: flex; gap: 8px; margin-bottom: 14px; }
+.ck-color-btns .ghost-btn { flex: 1; }
+.ghost-btn.active { border-color: var(--accent); color: var(--accent); background: #f3f7ff; }
+
+/* ---------- preview ---------- */
+.ck-preview-wrap { position: relative; }
+.ck-preview {
+  width: 100%; max-height: 420px; display: block; margin: 0 auto; border-radius: 12px;
+  border: 1px solid var(--border); object-fit: contain;
+  background: repeating-conic-gradient(#e2e6ed 0% 25%, #ffffff 0% 50%) 0 0 / 20px 20px;
+}
+.ck-preview.picking { cursor: crosshair; }
+.ck-pick-banner {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: #111827; color: #fff; font-size: 12.5px; font-weight: 600;
+  padding: 6px 14px; border-radius: 99px; pointer-events: none; white-space: nowrap;
+}
+.ck-transport { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.ck-transport .square-btn { width: 40px; height: 40px; font-size: 14px; flex-shrink: 0; }
+.ck-transport input[type="range"] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.ck-time {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px;
+  color: var(--text-muted); min-width: 90px; text-align: right;
+}
+.ck-preview-toggle { display: flex; gap: 6px; margin-top: 10px; justify-content: center; }
+
+/* ---------- format-specific option rows ---------- */
+.ck-bg-row { display: flex; align-items: center; gap: 10px; }
+.ck-bg-hint { margin: 0; }
+.ck-bg-row input[type="color"] {
+  width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 10px;
+  padding: 2px; background: #fff; cursor: pointer;
+}
+
+/* ---------- result ---------- */
+.ck-result { border-top: 1px solid var(--border); padding-top: 18px; margin-top: 18px; }
+.ck-result-media {
+  max-width: 100%; max-height: 360px; display: block; margin: 0 auto; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: repeating-conic-gradient(#e2e6ed 0% 25%, #ffffff 0% 50%) 0 0 / 20px 20px;
+}
+.ck-result-media[hidden] { display: none; }
+.ck-result-meta {
+  font-size: 12.5px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px;
+}
+.ck-result-actions { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+.ck-result-actions .primary-btn { min-width: 180px; }
