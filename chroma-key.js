@@ -55,23 +55,35 @@
   // ---------- keying (shared with export) ----------
   let alphaBuf = null, reachBuf = null, queueBuf = null;
 
-  // Keeps only background pixels that connect to the frame edge. Pixels that match the
-  // background color but are sealed inside the subject (highlights, eyes) are restored.
+  // Keeps only background that connects to the frame edge. The flood travels through fully
+  // keyed pixels only, so light colors on the subject (which are partly keyed) can't act as
+  // a bridge into sealed areas such as highlights and eyes. Partly keyed pixels are kept
+  // only within SOFT_REACH pixels of true background; the rest are restored to solid.
+  const SOFT_REACH = 3;
   function restoreEnclosed(alpha, w, h) {
     const n = w * h;
     if (!reachBuf || reachBuf.length !== n) { reachBuf = new Uint8Array(n); queueBuf = new Int32Array(n); }
     const reach = reachBuf, queue = queueBuf;
     reach.fill(0);
     let qLen = 0;
-    function push(i) { if (!reach[i] && alpha[i] < 255) { reach[i] = 1; queue[qLen++] = i; } }
-    for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
-    for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
-    for (let q = 0; q < qLen; q++) {
+    function visit(q, allow) {
       const i = queue[q], x = i % w;
-      if (x > 0) push(i - 1);
-      if (x < w - 1) push(i + 1);
-      if (i >= w) push(i - w);
-      if (i + w < n) push(i + w);
+      if (x > 0) allow(i - 1);
+      if (x < w - 1) allow(i + 1);
+      if (i >= w) allow(i - w);
+      if (i + w < n) allow(i + w);
+    }
+    // Phase 1: fully keyed background connected to the frame edge.
+    const hard = i => { if (!reach[i] && alpha[i] === 0) { reach[i] = 1; queue[qLen++] = i; } };
+    for (let x = 0; x < w; x++) { hard(x); hard((h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { hard(y * w); hard(y * w + w - 1); }
+    for (let q = 0; q < qLen; q++) visit(q, hard);
+    // Phase 2: soft edge pixels hugging that background (a few pixels deep).
+    const soft = i => { if (!reach[i] && alpha[i] > 0 && alpha[i] < 255) { reach[i] = 1; queue[qLen++] = i; } };
+    for (let d = 0, start = 0; d < SOFT_REACH; d++) {
+      const end = qLen;
+      for (let q = start; q < end; q++) visit(q, soft);
+      start = end;
     }
     for (let i = 0; i < n; i++) if (!reach[i]) alpha[i] = 255;
   }
