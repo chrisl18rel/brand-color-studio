@@ -26,7 +26,7 @@
   const autoBtn = $('ckAutoBtn'), pickBtn = $('ckPickBtn');
   const tolIn = $('ckTolerance'), tolVal = $('ckToleranceVal');
   const softIn = $('ckSoftness'), softVal = $('ckSoftnessVal');
-  const spillChk = $('ckSpill');
+  const spillChk = $('ckSpill'), enclosedChk = $('ckEnclosed');
   const startIn = $('ckStart'), endIn = $('ckEnd'), startVal = $('ckStartVal'), endVal = $('ckEndVal');
   const setStartBtn = $('ckSetStart'), setEndBtn = $('ckSetEnd');
   const widthIn = $('ckWidth');
@@ -53,25 +53,57 @@
   }
 
   // ---------- keying (shared with export) ----------
+  let alphaBuf = null, reachBuf = null, queueBuf = null;
+
+  // Keeps only background pixels that connect to the frame edge. Pixels that match the
+  // background color but are sealed inside the subject (highlights, eyes) are restored.
+  function restoreEnclosed(alpha, w, h) {
+    const n = w * h;
+    if (!reachBuf || reachBuf.length !== n) { reachBuf = new Uint8Array(n); queueBuf = new Int32Array(n); }
+    const reach = reachBuf, queue = queueBuf;
+    reach.fill(0);
+    let qLen = 0;
+    function push(i) { if (!reach[i] && alpha[i] < 255) { reach[i] = 1; queue[qLen++] = i; } }
+    for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+    for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+    for (let q = 0; q < qLen; q++) {
+      const i = queue[q], x = i % w;
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (i >= w) push(i - w);
+      if (i + w < n) push(i + w);
+    }
+    for (let i = 0; i < n; i++) if (!reach[i]) alpha[i] = 255;
+  }
+
   // Writes keyed RGBA into `out` from source RGBA `src`. Alpha is 0..255 (soft edges).
-  function keyFrame(src, out, settings) {
+  // `w` and `h` are needed for the enclosed-area pass.
+  function keyFrame(src, out, settings, w, h) {
     const { r: kr, g: kg, b: kb } = settings.key;
     const tol = settings.tolerance * 441.67;          // 0..1 of max RGB distance
     const soft = Math.max(1, settings.softness * 441.67);
     const spill = settings.spill;
     const dom = kg > kr && kg > kb ? 'g' : (kb > kr && kb > kg ? 'b' : (kr > kg && kr > kb ? 'r' : null));
-    for (let i = 0; i < src.length; i += 4) {
+    const n = src.length / 4;
+    if (!alphaBuf || alphaBuf.length !== n) alphaBuf = new Uint8Array(n);
+    const alpha = alphaBuf;
+
+    for (let p = 0, i = 0; p < n; p++, i += 4) {
+      const dr = src[i] - kr, dg = src[i + 1] - kg, db = src[i + 2] - kb;
+      let a = (Math.sqrt(dr * dr + dg * dg + db * db) - tol) / soft;
+      alpha[p] = a <= 0 ? 0 : (a >= 1 ? 255 : Math.round(a * 255));
+    }
+    if (settings.keepEnclosed && w && h) restoreEnclosed(alpha, w, h);
+
+    for (let p = 0, i = 0; p < n; p++, i += 4) {
       let r = src[i], g = src[i + 1], b = src[i + 2];
-      const dr = r - kr, dg = g - kg, db = b - kb;
-      const d = Math.sqrt(dr * dr + dg * dg + db * db);
-      let a = (d - tol) / soft;
-      a = a < 0 ? 0 : (a > 1 ? 1 : a);
-      if (a > 0 && a < 1 && spill && dom) {
+      const a = alpha[p];
+      if (a > 0 && a < 255 && spill && dom) {
         if (dom === 'g') { const m = Math.max(r, b); if (g > m) g = m; }
         else if (dom === 'b') { const m = Math.max(r, g); if (b > m) b = m; }
         else { const m = Math.max(g, b); if (r > m) r = m; }
       }
-      out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = Math.round(a * 255);
+      out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = a;
     }
   }
 
@@ -80,7 +112,8 @@
       key: state.key,
       tolerance: parseInt(tolIn.value, 10) / 100,
       softness: parseInt(softIn.value, 10) / 100,
-      spill: spillChk.checked
+      spill: spillChk.checked,
+      keepEnclosed: enclosedChk.checked
     };
   }
 
@@ -203,7 +236,7 @@
     if (state.previewMode === 'original') { outCx.drawImage(srcCv, 0, 0); return; }
     const img = srcCx.getImageData(0, 0, srcCv.width, srcCv.height);
     const out = outCx.createImageData(img.width, img.height);
-    keyFrame(img.data, out.data, settings());
+    keyFrame(img.data, out.data, settings(), img.width, img.height);
     outCx.putImageData(out, 0, 0);
   }
   function loop() {
@@ -242,6 +275,7 @@
   tolIn.addEventListener('input', () => { tolVal.textContent = tolIn.value + '%'; drawPreview(); });
   softIn.addEventListener('input', () => { softVal.textContent = softIn.value + '%'; drawPreview(); });
   spillChk.addEventListener('change', drawPreview);
+  enclosedChk.addEventListener('change', drawPreview);
 
   function getTrim() {
     let s = parseFloat(startIn.value) || 0, e = parseFloat(endIn.value) || 0;

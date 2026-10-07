@@ -88,7 +88,7 @@
     srcCx.drawImage(work, 0, 0, w, h);
     const img = srcCx.getImageData(0, 0, w, h);
     const out = outCx.createImageData(w, h);
-    CK.keyFrame(img.data, out.data, opts);
+    CK.keyFrame(img.data, out.data, opts, w, h);
     return out;
   }
 

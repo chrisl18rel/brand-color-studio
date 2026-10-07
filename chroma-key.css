@@ -23,6 +23,8 @@
 .ck-color-btns .ghost-btn { flex: 1; }
 .ghost-btn.active { border-color: var(--accent); color: var(--accent); background: #f3f7ff; }
 
+.ck-grid .check-row { margin-bottom: 8px; }
+
 /* ---------- preview ---------- */
 .ck-preview-wrap { position: relative; }
 .ck-preview {

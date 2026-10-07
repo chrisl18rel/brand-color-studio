@@ -316,8 +316,9 @@
         <div class="range-head"><label for="ckSoftness">Edge Softness</label><span id="ckSoftnessVal" class="range-value">10%</span></div>
         <input type="range" id="ckSoftness" min="0" max="50" step="1" value="10">
       </div>
+      <label class="check-row"><input type="checkbox" id="ckEnclosed" checked> Keep areas sealed inside the subject</label>
       <label class="check-row"><input type="checkbox" id="ckSpill" checked> Remove color spill on edges</label>
-      <p class="hint">Raise tolerance if background remains. Lower it if parts of the subject disappear.</p>
+      <p class="hint">Only background touching the frame edge is removed, so highlights and eyes that match the background color stay. Raise tolerance if background remains.</p>
 
       <hr class="divider">
       <h2 class="panel-title">Export Settings</h2>
