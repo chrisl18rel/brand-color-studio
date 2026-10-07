@@ -7,6 +7,7 @@
 <title>Brand Color Studio</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="color-picker.css">
+<link rel="stylesheet" href="gif-converter.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
@@ -16,6 +17,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-view="extractor">Color Extractor</button>
     <button class="tab-btn" data-view="resizer">Image Resizer</button>
+    <button class="tab-btn" data-view="gif">MP4 to GIF</button>
   </nav>
 </header>
 
@@ -165,10 +167,118 @@
   </div>
 </main>
 
+<!-- ============ MP4 TO GIF VIEW (logic: gif-converter.js, styles: gif-converter.css) ============ -->
+<main id="view-gif" class="view">
+  <div class="gif-grid">
+
+    <!-- SIDEBAR -->
+    <aside class="panel">
+      <div class="resizer-toolbar">
+        <button id="gifAddBtn" class="square-btn big" title="Select video">+</button>
+        <button id="gifClearBtn" class="square-btn" title="Remove video">&#128465;</button>
+        <input type="file" id="gifFileInput" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
+      </div>
+      <p class="hint">MP4, WebM or MOV &middot; max 200 MB &middot; converts on your computer</p>
+
+      <div id="gifFileCard" class="gif-file-card" hidden>
+        <div class="gif-file-icon">&#9654;</div>
+        <div class="gif-file-meta">
+          <div id="gifFileName" class="gif-file-name"></div>
+          <div id="gifFileSub" class="gif-file-sub"></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <h2 class="panel-title">GIF Settings</h2>
+
+      <div class="dim-field">
+        <label for="gifWidth">Width <span class="unit">px &middot; height scales automatically</span></label>
+        <input type="number" id="gifWidth" placeholder="Original" min="16">
+      </div>
+
+      <div class="range-field">
+        <div class="range-head">
+          <label for="gifFps">Frame Rate</label>
+          <span id="gifFpsVal" class="range-value">12 fps</span>
+        </div>
+        <input type="range" id="gifFps" min="5" max="30" step="1" value="12">
+      </div>
+
+      <div class="dim-field">
+        <label for="gifColors">Quality <span class="unit">colors per frame</span></label>
+        <select id="gifColors">
+          <option value="256">High (256 colors)</option>
+          <option value="128">Medium (128 colors)</option>
+          <option value="64">Low (64 colors)</option>
+          <option value="32">Smallest (32 colors)</option>
+        </select>
+      </div>
+
+      <label class="check-row"><input type="checkbox" id="gifLoop" checked> Loop forever</label>
+
+      <hr class="divider">
+      <div id="gifEstimate" class="gif-estimate"></div>
+      <p class="hint">Lower width, frame rate or quality for a smaller file.</p>
+
+      <button id="gifConvertBtn" class="primary-btn full" disabled>Convert to GIF &rarr;</button>
+      <div id="gifProgress" class="gif-progress" hidden>
+        <div class="gif-progress-track"><div id="gifProgressFill" class="gif-progress-fill"></div></div>
+        <div id="gifProgressLabel" class="gif-progress-label"></div>
+      </div>
+    </aside>
+
+    <!-- STAGE -->
+    <section id="gifStage" class="panel gif-stage">
+      <div id="gifEmpty" class="drop-zone rz-empty">
+        <div class="drop-icon">&#8682;</div>
+        <p><strong>Drop a video here</strong> or click to browse</p>
+        <p class="hint">Your video never leaves your computer</p>
+      </div>
+
+      <div id="gifEditor" hidden>
+        <div class="gif-video-wrap">
+          <video id="gifVideo" class="gif-video" controls muted playsinline></video>
+        </div>
+
+        <div class="trim-row">
+          <h2 class="panel-title">Trim Clip</h2>
+          <span id="gifTrimReadout" class="trim-readout"></span>
+        </div>
+
+        <div class="range-field">
+          <div class="range-head"><label for="gifStart">Start</label><span id="gifStartVal" class="range-value"></span></div>
+          <input type="range" id="gifStart" min="0" step="0.05" value="0">
+        </div>
+        <div class="range-field">
+          <div class="range-head"><label for="gifEnd">End</label><span id="gifEndVal" class="range-value"></span></div>
+          <input type="range" id="gifEnd" min="0" step="0.05" value="0">
+        </div>
+
+        <div class="trim-buttons">
+          <button id="gifSetStart" class="ghost-btn">Set Start to Current Frame</button>
+          <button id="gifSetEnd" class="ghost-btn">Set End to Current Frame</button>
+          <button id="gifPlayClip" class="ghost-btn">&#9654; Preview Clip</button>
+        </div>
+      </div>
+
+      <div id="gifResult" class="gif-result" hidden>
+        <h2 class="panel-title">Your GIF</h2>
+        <img id="gifResultImg" class="gif-result-img" alt="Converted GIF preview">
+        <div id="gifResultMeta" class="gif-result-meta"></div>
+        <div class="gif-result-actions">
+          <button id="gifDownloadBtn" class="primary-btn">Download GIF</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
 <div id="toastWrap" class="toast-wrap"></div>
 
 <script src="color-picker.js"></script>
 <script src="color-extractor.js"></script>
 <script src="resizer.js"></script>
+<script src="gif-converter.js"></script>
 </body>
 </html>
