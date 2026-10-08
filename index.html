@@ -283,21 +283,20 @@
     <!-- SIDEBAR -->
     <aside class="panel">
       <div class="resizer-toolbar">
-        <button id="ckAddBtn" class="square-btn big" title="Select video">+</button>
-        <button id="ckClearBtn" class="square-btn" title="Remove video">&#128465;</button>
-        <input type="file" id="ckFileInput" accept="video/mp4,video/webm,video/quicktime,video/*" hidden>
+        <button id="ckAddBtn" class="square-btn big" title="Add videos">+</button>
+        <button id="ckClearBtn" class="square-btn" title="Remove all clips">&#128465;</button>
+        <input type="file" id="ckFileInput" accept="video/mp4,video/webm,video/quicktime,video/*" multiple hidden>
       </div>
-      <p class="hint">MP4, WebM or MOV &middot; max 200 MB &middot; works best on a solid-color background</p>
+      <p class="hint">MP4, WebM or MOV &middot; max 200 MB each &middot; add several clips to join them into one export</p>
 
-      <div id="ckFileCard" class="gif-file-card" hidden>
-        <div class="gif-file-icon">&#9654;</div>
-        <div class="gif-file-meta">
-          <div id="ckFileName" class="gif-file-name"></div>
-          <div id="ckFileSub" class="gif-file-sub"></div>
-        </div>
-      </div>
+      <div id="ckClipList" class="ck-clip-list" hidden></div>
 
+      <div id="ckClipSettings" hidden>
       <hr class="divider">
+      <h2 class="panel-title">Clip Settings</h2>
+      <p class="hint">Apply to the selected clip. Each clip keeps its own settings.</p>
+      <label class="check-row"><input type="checkbox" id="ckFlip"> Flip horizontally (mirror)</label>
+
       <h2 class="panel-title">Background Color</h2>
       <div class="ck-color-row">
         <div id="ckKeySwatch" class="ck-color-swatch"></div>
@@ -319,6 +318,7 @@
       <label class="check-row"><input type="checkbox" id="ckEnclosed" checked> Keep areas sealed inside the subject</label>
       <label class="check-row"><input type="checkbox" id="ckSpill" checked> Remove color spill on edges</label>
       <p class="hint">Only background touching the frame edge is removed, so highlights and eyes that match the background color stay. Raise tolerance if background remains.</p>
+      </div>
 
       <hr class="divider">
       <h2 class="panel-title">Export Settings</h2>
@@ -341,7 +341,7 @@
       </div>
 
       <div class="dim-field">
-        <label for="ckWidth">Width <span class="unit">px &middot; height scales automatically</span></label>
+        <label for="ckWidth">Width <span class="unit">px &middot; height follows the first clip</span></label>
         <input type="number" id="ckWidth" placeholder="Original" min="16">
       </div>
 
