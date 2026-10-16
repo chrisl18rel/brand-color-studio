@@ -1,7 +1,7 @@
 // chroma-key.js
 /* global document, window */
-// Background Remover view: holds a list of clips, each with its own background color,
-// tolerance, trim and flip; shows a live keyed preview of the selected clip.
+// Background Remover view: holds a list of clips (videos or still images), each with its
+// own background color, tolerance, trim/hold time and flip; shows a live keyed preview.
 // Export logic lives in chroma-key-export.js, which reads clips and the keyer through
 // window.ChromaKey (defined at the bottom of this file).
 // Uses window.showToast (defined in color-extractor.js).
@@ -27,6 +27,7 @@
   const startIn = $('ckStart'), endIn = $('ckEnd'), startVal = $('ckStartVal'), endVal = $('ckEndVal');
   const setStartBtn = $('ckSetStart'), setEndBtn = $('ckSetEnd');
   const widthIn = $('ckWidth');
+  const transport = $('ckTransport'), trimWrap = $('ckTrimWrap'), holdWrap = $('ckHoldWrap'), holdIn = $('ckHold');
 
   const srcCv = document.createElement('canvas');
   const srcCx = srcCv.getContext('2d', { willReadFrequently: true });
@@ -49,13 +50,17 @@
     return { r: n >> 16, g: (n >> 8) & 255, b: n & 255 };
   }
   function clip() { return state.clips[state.cur] || null; }
+  // The drawable for a clip: its <img> for images, the shared <video> for videos.
+  function sourceOf(c) { return c.type === 'image' ? c.img : video; }
+  function sourceReady(c) { return c.type === 'image' ? c.img.complete : video.readyState >= 2; }
 
-  // Draws a video frame into a w×h box, fitted and centered, optionally mirrored.
+  // Draws a video frame or image into a w×h box, fitted and centered, optionally mirrored.
   // Shared with export so preview and output match.
   function drawSource(cx, vid, w, h, flip) {
     cx.clearRect(0, 0, w, h);
-    const s = Math.min(w / vid.videoWidth, h / vid.videoHeight);
-    const dw = Math.round(vid.videoWidth * s), dh = Math.round(vid.videoHeight * s);
+    const sw = vid.videoWidth || vid.naturalWidth, sh = vid.videoHeight || vid.naturalHeight;
+    const s = Math.min(w / sw, h / sh);
+    const dw = Math.round(sw * s), dh = Math.round(sh * s);
     const dx = Math.round((w - dw) / 2), dy = Math.round((h - dh) / 2);
     cx.save();
     if (flip) { cx.translate(w, 0); cx.scale(-1, 1); }
@@ -148,28 +153,41 @@
 
   function addFiles(fileList) {
     if (window.ChromaKey.busy()) { window.showToast('Wait for the export to finish or cancel it', 'error'); return; }
-    const files = Array.from(fileList).filter(f => f.type.startsWith('video/'));
-    if (!files.length) { window.showToast('Drop a video file (MP4, WebM or MOV)', 'error'); return; }
+    const files = Array.from(fileList).filter(f => f.type.startsWith('video/') || f.type.startsWith('image/'));
+    if (!files.length) { window.showToast('Drop a video (MP4, WebM, MOV) or image (PNG, JPG, WebP)', 'error'); return; }
     files.forEach(f => {
       if (f.size > MAX_BYTES) { window.showToast(f.name + ' is over 200 MB', 'error'); return; }
       loadClip(f);
     });
   }
 
+  function newClip(file, url, extra) {
+    return Object.assign({
+      name: file.name, url, size: file.size,
+      key: { r: 255, g: 255, b: 255 }, autoKey: true,
+      tolerance: 0.25, softness: 0.10, spill: true, keepEnclosed: true, flip: false
+    }, extra);
+  }
+
   function loadClip(file) {
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith('image/')) {
+      const img = new Image();
+      img.onload = () => {
+        state.clips.push(newClip(file, url, { type: 'image', img, w: img.naturalWidth, h: img.naturalHeight, hold: 1, start: 0, end: 1, duration: 1 }));
+        selectClip(state.clips.length - 1);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); window.showToast('Could not read ' + file.name, 'error'); };
+      img.src = url;
+      return;
+    }
     const probe = document.createElement('video');
     probe.muted = true; probe.preload = 'metadata';
-    const url = URL.createObjectURL(file);
     probe.onloadedmetadata = () => {
       const w = probe.videoWidth, h = probe.videoHeight, d = probe.duration;
       probe.removeAttribute('src'); probe.load();
       if (!w || !isFinite(d)) { URL.revokeObjectURL(url); window.showToast('Could not read ' + file.name, 'error'); return; }
-      state.clips.push({
-        name: file.name, url, w, h, duration: d, size: file.size,
-        key: { r: 255, g: 255, b: 255 }, autoKey: true,
-        tolerance: 0.25, softness: 0.10, spill: true, keepEnclosed: true, flip: false,
-        start: 0, end: d
-      });
+      state.clips.push(newClip(file, url, { type: 'video', w, h, duration: d, start: 0, end: d }));
       selectClip(state.clips.length - 1);
     };
     probe.onerror = () => { URL.revokeObjectURL(url); window.showToast('This browser cannot play ' + file.name, 'error'); };
@@ -191,7 +209,7 @@
       row.querySelector('.ck-clip-name').textContent = c.name;
       row.querySelector('.ck-clip-name').title = c.name;
       row.querySelector('.ck-clip-sub').textContent =
-        fmtTime(c.start) + ' – ' + fmtTime(c.end) + (c.flip ? ' · flipped' : '');
+        (c.type === 'image' ? 'image · ' + c.hold.toFixed(1) + 's' : fmtTime(c.start) + ' – ' + fmtTime(c.end)) + (c.flip ? ' · flipped' : '');
       row.addEventListener('click', () => selectClip(i));
       row.querySelectorAll('.ck-clip-btn').forEach(btn => btn.addEventListener('click', e => {
         e.stopPropagation(); clipAction(btn.dataset.act, i);
@@ -242,6 +260,9 @@
     tolIn.value = Math.round(c.tolerance * 100); tolVal.textContent = tolIn.value + '%';
     softIn.value = Math.round(c.softness * 100); softVal.textContent = softIn.value + '%';
     spillChk.checked = c.spill; enclosedChk.checked = c.keepEnclosed; flipChk.checked = c.flip;
+    const isImg = c.type === 'image';
+    transport.hidden = isImg; trimWrap.hidden = isImg; holdWrap.hidden = !isImg;
+    if (isImg) holdIn.value = c.hold;
     [startIn, endIn, scrub].forEach(r => { r.max = c.duration.toFixed(2); r.step = '0.05'; });
     startIn.value = c.start; endIn.value = c.end.toFixed(2); scrub.value = c.start;
     const scale = Math.min(1, PREVIEW_MAX_W / c.w);
@@ -251,6 +272,13 @@
     if (!widthIn.value && state.clips.length === 1) widthIn.value = String(Math.min(c.w, 480));
     updateTrim();
     state.needAuto = c.autoKey;
+    if (isImg) {
+      video.removeAttribute('src'); video.load();
+      if (state.needAuto) { state.needAuto = false; autoDetect(); c.autoKey = true; }
+      if (!c.loaded) { c.loaded = true; window.showToast(c.name + ' loaded'); }
+      drawPreview();
+      return;
+    }
     video.src = c.url;
     video.onloadedmetadata = () => { video.currentTime = Math.max(c.start, Math.min(0.05, c.duration / 2)); };
     video.onerror = () => window.showToast('This browser cannot play ' + c.name, 'error');
@@ -271,7 +299,7 @@
   // Samples the frame border and picks the most common color.
   function autoDetect() {
     const c = clip(); if (!c) return;
-    drawSource(srcCx, video, srcCv.width, srcCv.height, c.flip);
+    drawSource(srcCx, sourceOf(c), srcCv.width, srcCv.height, c.flip);
     const w = srcCv.width, h = srcCv.height, d = srcCx.getImageData(0, 0, w, h).data;
     const counts = new Map();
     const inset = Math.max(2, Math.round(Math.min(w, h) * 0.02));
@@ -306,7 +334,7 @@
     const offX = (rect.width - preview.width * scale) / 2, offY = (rect.height - preview.height * scale) / 2;
     const x = Math.floor((e.clientX - rect.left - offX) / scale), y = Math.floor((e.clientY - rect.top - offY) / scale);
     if (x < 0 || y < 0 || x >= preview.width || y >= preview.height) return;
-    drawSource(srcCx, video, srcCv.width, srcCv.height, c.flip);
+    drawSource(srcCx, sourceOf(c), srcCv.width, srcCv.height, c.flip);
     const p = srcCx.getImageData(x, y, 1, 1).data;
     setKey({ r: p[0], g: p[1], b: p[2] });
     setPicking(false);
@@ -317,8 +345,8 @@
   // ---------- preview ----------
   function drawPreview() {
     const c = clip();
-    if (!c || video.readyState < 2) return;
-    drawSource(srcCx, video, srcCv.width, srcCv.height, c.flip);
+    if (!c || !sourceReady(c)) return;
+    drawSource(srcCx, sourceOf(c), srcCv.width, srcCv.height, c.flip);
     if (state.previewMode === 'original') { outCx.clearRect(0, 0, preview.width, preview.height); outCx.drawImage(srcCv, 0, 0); return; }
     const img = srcCx.getImageData(0, 0, srcCv.width, srcCv.height);
     const out = outCx.createImageData(img.width, img.height);
@@ -336,7 +364,7 @@
   function stopLoop() { if (state.rafId) cancelAnimationFrame(state.rafId); state.rafId = null; }
 
   playBtn.addEventListener('click', () => {
-    const c = clip(); if (!c) return;
+    const c = clip(); if (!c || c.type === 'image') return;
     if (video.paused) {
       if (video.currentTime < c.start || video.currentTime >= c.end) video.currentTime = c.start;
       video.play(); playBtn.innerHTML = '&#10074;&#10074;'; stopLoop(); loop();
@@ -364,9 +392,16 @@
   spillChk.addEventListener('change', () => { const c = clip(); if (c) { c.spill = spillChk.checked; drawPreview(); } });
   enclosedChk.addEventListener('change', () => { const c = clip(); if (c) { c.keepEnclosed = enclosedChk.checked; drawPreview(); } });
   flipChk.addEventListener('change', () => { const c = clip(); if (c) { c.flip = flipChk.checked; renderClipList(); drawPreview(); } });
+  holdIn.addEventListener('input', () => {
+    const c = clip(); if (!c || c.type !== 'image') return;
+    c.hold = Math.max(0.1, parseFloat(holdIn.value) || 1);
+    c.end = c.duration = c.hold;
+    renderClipList(); window.ChromaKey.updateEstimate();
+  });
 
   function updateTrim() {
     const c = clip(); if (!c) return;
+    if (c.type === 'image') { renderClipList(); window.ChromaKey.updateEstimate(); return; }
     let s = parseFloat(startIn.value) || 0, e = parseFloat(endIn.value) || 0;
     if (e < s) [s, e] = [e, s];
     c.start = s; c.end = e;

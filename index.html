@@ -233,7 +233,7 @@
     <section id="gifStage" class="panel gif-stage">
       <div id="gifEmpty" class="drop-zone rz-empty">
         <div class="drop-icon">&#8682;</div>
-        <p><strong>Drop a video here</strong> or click to browse</p>
+        <p><strong>Drop a video or image here</strong> or click to browse</p>
         <p class="hint">Your video never leaves your computer</p>
       </div>
 
@@ -285,9 +285,9 @@
       <div class="resizer-toolbar">
         <button id="ckAddBtn" class="square-btn big" title="Add videos">+</button>
         <button id="ckClearBtn" class="square-btn" title="Remove all clips">&#128465;</button>
-        <input type="file" id="ckFileInput" accept="video/mp4,video/webm,video/quicktime,video/*" multiple hidden>
+        <input type="file" id="ckFileInput" accept="video/mp4,video/webm,video/quicktime,video/*,image/png,image/jpeg,image/webp,image/*" multiple hidden>
       </div>
-      <p class="hint">MP4, WebM or MOV &middot; max 200 MB each &middot; add several clips to join them into one export</p>
+      <p class="hint">Videos (MP4, WebM, MOV) or images (PNG, JPG, WebP) &middot; max 200 MB each &middot; add several to join them into one export</p>
 
       <div id="ckClipList" class="ck-clip-list" hidden></div>
 
@@ -304,7 +304,7 @@
       </div>
       <div class="ck-color-btns">
         <button id="ckAutoBtn" class="ghost-btn">Auto-Detect</button>
-        <button id="ckPickBtn" class="ghost-btn">Pick from Video</button>
+        <button id="ckPickBtn" class="ghost-btn">Pick from Preview</button>
       </div>
 
       <div class="range-field">
@@ -317,7 +317,7 @@
       </div>
       <label class="check-row"><input type="checkbox" id="ckEnclosed" checked> Keep areas sealed inside the subject</label>
       <label class="check-row"><input type="checkbox" id="ckSpill" checked> Remove color spill on edges</label>
-      <p class="hint">Only background touching the frame edge is removed, so highlights and eyes that match the background color stay. Raise tolerance if background remains.</p>
+      <p class="hint">Only background touching the picture edge is removed, so highlights and eyes that match the background color stay. Raise tolerance if background remains.</p>
       </div>
 
       <hr class="divider">
@@ -327,7 +327,7 @@
         <label for="ckFormat">Save As</label>
         <select id="ckFormat">
           <option value="gif">Transparent GIF</option>
-          <option value="png">PNG Frames (ZIP, transparent)</option>
+          <option value="png">Transparent PNG (one image, or ZIP of frames)</option>
           <option value="video">Video with new background (MP4/WebM)</option>
         </select>
       </div>
@@ -363,17 +363,17 @@
     <section id="ckStage" class="panel ck-stage">
       <div id="ckEmpty" class="drop-zone rz-empty">
         <div class="drop-icon">&#8682;</div>
-        <p><strong>Drop a video here</strong> or click to browse</p>
-        <p class="hint">Your video never leaves your computer</p>
+        <p><strong>Drop a video or image here</strong> or click to browse</p>
+        <p class="hint">Your files never leave your computer</p>
       </div>
 
       <div id="ckEditor" hidden>
         <video id="ckVideo" muted playsinline hidden></video>
         <div class="ck-preview-wrap">
           <canvas id="ckPreview" class="ck-preview"></canvas>
-          <div id="ckPickBanner" class="ck-pick-banner" hidden>Click the background color in the video</div>
+          <div id="ckPickBanner" class="ck-pick-banner" hidden>Click the background color in the picture</div>
         </div>
-        <div class="ck-transport">
+        <div id="ckTransport" class="ck-transport">
           <button id="ckPlayBtn" class="square-btn" title="Play / pause">&#9654;</button>
           <input type="range" id="ckScrub" min="0" step="0.05" value="0">
           <span id="ckTime" class="ck-time">0:00.0 / 0:00.0</span>
@@ -383,6 +383,7 @@
           <button class="ghost-btn" data-ck-preview="original">Original</button>
         </div>
 
+        <div id="ckTrimWrap">
         <div class="trim-row">
           <h2 class="panel-title">Trim Clip</h2>
         </div>
@@ -397,6 +398,15 @@
         <div class="trim-buttons">
           <button id="ckSetStart" class="ghost-btn">Set Start to Current Frame</button>
           <button id="ckSetEnd" class="ghost-btn">Set End to Current Frame</button>
+        </div>
+        </div>
+
+        <div id="ckHoldWrap" class="ck-hold" hidden>
+          <h2 class="panel-title">Image Timing</h2>
+          <div class="dim-field">
+            <label for="ckHold">Show this image for <span class="unit">seconds &middot; used when joining into a GIF or video</span></label>
+            <input type="number" id="ckHold" value="1" min="0.1" step="0.1">
+          </div>
         </div>
       </div>
 

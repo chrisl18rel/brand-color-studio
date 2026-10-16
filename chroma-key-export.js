@@ -1,7 +1,8 @@
 // chroma-key-export.js
 /* global document, window, JSZip, MediaRecorder */
 // Export logic for the Background Remover view. Joins every clip in the list (in order)
-// into one output. Reads clips, the keyer and the frame drawer from window.ChromaKey
+// into one output. Image clips hold for their set time in GIF/video exports and give one
+// frame in PNG exports; a single-frame PNG export downloads as a .png instead of a ZIP. Reads clips, the keyer and the frame drawer from window.ChromaKey
 // (defined in chroma-key.js) and fills in busy/clearResult/updateEstimate.
 // Transparent GIF uses gifenc (loaded from jsDelivr on first export); PNG frames use JSZip
 // (loaded in index.html); video uses the browser's MediaRecorder.
@@ -25,10 +26,13 @@
   const widthIn = $('ckWidth');
 
   // ---------- estimate ----------
-  function clipFrames(c, fps) { return Math.max(1, Math.ceil((c.end - c.start) * fps)); }
+  function clipFrames(c, fps, fmt) {
+    if (c.type === 'image') return fmt === 'png' ? 1 : Math.max(1, Math.round(c.hold * fps));
+    return Math.max(1, Math.ceil((c.end - c.start) * fps));
+  }
   function totalFrames() {
-    const fps = parseInt(fpsIn.value, 10);
-    return CK.state.clips.reduce((n, c) => n + clipFrames(c, fps), 0);
+    const fps = parseInt(fpsIn.value, 10), fmt = formatSel.value;
+    return CK.state.clips.reduce((n, c) => n + clipFrames(c, fps, fmt), 0);
   }
   function updateEstimate() {
     const fmt = formatSel.value;
@@ -99,14 +103,23 @@
   }
 
   // Walks every frame of every clip in order, calling onFrame(imageData, frameIndex, total).
-  async function eachFrame(w, h, fps, total, onFrame) {
+  async function eachFrame(w, h, fps, total, onFrame, fmt) {
     const { cx: srcCx } = makeCanvas(w, h);
     const { cx: outCx } = makeCanvas(w, h);
     let i = 0;
     for (const c of CK.state.clips) {
+      if (c.type === 'image') {
+        const n = clipFrames(c, fps, fmt);
+        for (let k = 0; k < n; k++) {
+          if (cancelled) throw new Error('cancelled');
+          await onFrame(keyedFrame(c.img, c, srcCx, outCx, w, h), i++, total);
+          await tick();
+        }
+        continue;
+      }
       const work = await openWork(c);
       try {
-        const n = clipFrames(c, fps);
+        const n = clipFrames(c, fps, fmt);
         for (let k = 0; k < n; k++) {
           if (cancelled) throw new Error('cancelled');
           await seek(work, Math.min(c.start + k / fps, Math.max(c.start, c.end - 0.01)));
@@ -133,14 +146,23 @@
       for (let p = 0, q = 3; q < d.length; p++, q += 4) if (d[q] === 0) index[p] = ti;
       enc.writeFrame(index, w, h, { palette, delay, repeat: 0, transparent: true, transparentIndex: ti, dispose: 2 });
       setProgress((i + 1) / total, 'Encoding frame ' + (i + 1) + ' of ' + total);
-    });
+    }, 'gif');
     enc.finish();
     return new Blob([enc.bytes()], { type: 'image/gif' });
   }
 
   async function exportPng(w, h, fps, total) {
-    if (typeof JSZip === 'undefined') throw new Error('ZIP library did not load');
     const { cv, cx } = makeCanvas(w, h);
+    if (total === 1) {
+      let single = null;
+      await eachFrame(w, h, fps, total, async out => {
+        cx.putImageData(out, 0, 0);
+        single = await new Promise(r => cv.toBlob(r, 'image/png'));
+      }, 'png');
+      resultExt = 'png';
+      return single;
+    }
+    if (typeof JSZip === 'undefined') throw new Error('ZIP library did not load');
     const zip = new JSZip();
     const pad = String(total).length;
     await eachFrame(w, h, fps, total, async (out, i) => {
@@ -148,8 +170,9 @@
       const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
       zip.file('frame-' + String(i + 1).padStart(pad, '0') + '.png', blob);
       setProgress((i + 1) / total, 'Rendering frame ' + (i + 1) + ' of ' + total);
-    });
+    }, 'png');
     setProgress(1, 'Zipping…');
+    resultExt = 'zip';
     return zip.generateAsync({ type: 'blob' });
   }
 
@@ -169,7 +192,7 @@
     const tmp = makeCanvas(w, h);
     const bg = bgColor.value;
     const clips = CK.state.clips;
-    const totalLen = clips.reduce((t, c) => t + (c.end - c.start), 0);
+    const totalLen = clips.reduce((t, c) => t + (c.type === 'image' ? c.hold : c.end - c.start), 0);
     const stream = outCv.captureStream(fps);
     const rec = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 8000000 } : undefined);
     const chunks = [];
@@ -186,6 +209,24 @@
     try {
       for (let ci = 0; ci < clips.length; ci++) {
         const c = clips[ci];
+        if (c.type === 'image') {
+          draw(c.img, c);
+          if (ci === 0) rec.start(200);
+          const t0 = performance.now();
+          await new Promise((resolve, reject) => {
+            function step() {
+              if (cancelled) { reject(new Error('cancelled')); return; }
+              const dt = (performance.now() - t0) / 1000;
+              draw(c.img, c);
+              setProgress((elapsed + Math.min(dt, c.hold)) / totalLen, 'Recording ' + CK.fmtTime(elapsed + Math.min(dt, c.hold)) + ' of ' + CK.fmtTime(totalLen));
+              if (dt >= c.hold) { resolve(); return; }
+              requestAnimationFrame(step);
+            }
+            step();
+          });
+          elapsed += c.hold;
+          continue;
+        }
         const work = await openWork(c);
         try {
           await seek(work, c.start);
@@ -233,15 +274,15 @@
       const { w, h } = CK.outDims();
       const fps = parseInt(fpsIn.value, 10);
       if (fmt === 'gif') { resultExt = 'gif'; resultBlob = await exportGif(w, h, fps, total); }
-      else if (fmt === 'png') { resultExt = 'zip'; resultBlob = await exportPng(w, h, fps, total); }
+      else if (fmt === 'png') resultBlob = await exportPng(w, h, fps, total);
       else resultBlob = await exportVideo(w, h, fps);
 
       resultUrl = URL.createObjectURL(resultBlob);
-      if (fmt === 'gif') { resultImg.src = resultUrl; resultImg.hidden = false; }
+      if (fmt === 'gif' || resultExt === 'png') { resultImg.src = resultUrl; resultImg.hidden = false; }
       else if (fmt === 'video') { resultVid.src = resultUrl; resultVid.hidden = false; }
       resultMeta.innerHTML =
         '<span class="rz-badge">' + w + ' X ' + h + '</span>' +
-        '<span class="rz-badge">' + (fmt === 'video' ? resultExt.toUpperCase() : total + ' frames') + '</span>' +
+        '<span class="rz-badge">' + (fmt === 'video' ? resultExt.toUpperCase() : (total === 1 ? 'PNG' : total + ' frames')) + '</span>' +
         '<span class="rz-badge new">' + CK.fmtSize(resultBlob.size) + '</span>';
       result.hidden = false;
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
